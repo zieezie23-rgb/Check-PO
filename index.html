@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pengecekan PO Expired</title>
+<meta name="theme-color" content="#0A56A8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PO Expired">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="assets/icon.png">
+<link rel="apple-touch-icon" href="assets/icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>Pengecekan PO Expired</h1>
+    <p id="subtitle">PO EXPIRED DC BOGOR1</p>
+  </div>
+  <button id="btnInstall" class="btn ghost" hidden>Pasang aplikasi</button>
+</header>
+
+<main>
+  <section class="step" id="secBahan">
+    <div class="step-head">
+      <span class="num">1</span>
+      <h2>Bahan</h2>
+      <button id="btnPickAll" class="btn ghost small">Pilih semua file sekaligus</button>
+      <input type="file" id="fileAll" multiple hidden>
+    </div>
+    <div class="bahan" id="bahan"></div>
+  </section>
+
+  <section class="step" id="secInput">
+    <div class="step-head">
+      <span class="num">2</span>
+      <h2>No PO yang dicek</h2>
+    </div>
+    <div class="inputrow">
+      <textarea id="poInput" rows="4" spellcheck="false" autocapitalize="characters" placeholder="Tempel satu atau lebih No PO — pisahkan dengan baris baru, spasi, atau koma&#10;contoh: EHAQ99040"></textarea>
+      <div class="inputactions">
+        <button id="btnRun" class="btn primary cta" disabled>Cek PO</button>
+        <button id="btnClear" class="btn ghost">Kosongkan</button>
+      </div>
+    </div>
+    <details class="opts">
+      <summary>Pengaturan kesimpulan</summary>
+      <label class="chk"><input type="checkbox" id="optDsi"> Aktifkan penilaian “DSI under Standart”</label>
+      <p class="hint">Penilaian ini dicek paling akhir: hanya muncul kalau baris tidak kena Promosi, PO Out, atau Stock Out. FK dicocokkan sebagai angka (di Excel lama tidak cocok karena FK bertipe teks).</p>
+      <div class="std" id="stdBox"></div>
+    </details>
+    <p id="warn" class="warn" hidden></p>
+  </section>
+
+  <section class="step" id="secHasil" hidden>
+    <div class="step-head">
+      <span class="num">3</span>
+      <h2>Kesimpulan</h2>
+    </div>
+    <div class="concl">
+      <textarea id="kesimpulan" rows="2" spellcheck="false"></textarea>
+      <div class="conclbar">
+        <button id="btnCopy" class="btn primary">Salin teks</button>
+      </div>
+    </div>
+
+    <div class="step-head tablehead">
+      <h2>Tabel hasil</h2>
+      <span id="stat" class="stat"></span>
+      <button id="btnJpg" class="btn ghost">Export JPEG</button>
+    </div>
+    <div class="tablewrap" id="tableWrap"></div>
+  </section>
+</main>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

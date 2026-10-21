@@ -1,0 +1,20 @@
+{
+  "name": "Pengecekan PO Expired",
+  "short_name": "PO Expired",
+  "description": "Cek item PO expired DC dari Master Stock, POMGG, Stock Out, dan Promo.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#000000",
+  "theme_color": "#0A56A8",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "assets/icon.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
