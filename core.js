@@ -6,6 +6,7 @@
   var BLN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
   var HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
+  var BLN_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
   var DEFAULT_STD = { 1: 21, 2: 15, 3: 10, 4: 7, 5: 7, 6: 7, 7: 7 };
 
   /* ---------- util ---------- */
@@ -181,6 +182,27 @@
     return { map: map, count: map.size };
   }
 
+  function parseSeasonal(rows) {
+    var h = -1, i;
+    for (i = 0; i < Math.min(rows.length, 15); i++) {
+      if (rows[i] && str(rows[i][0]).toUpperCase() === 'PRDCD' && rows[i].some(function (x) { return str(x).toUpperCase() === 'POLA1'; })) { h = i; break; }
+    }
+    if (h < 0) throw new Error('Header "PRDCD" dan "POLA1" tidak ditemukan di sheet BASIC (baris 1-15).');
+    var head = rows[h].map(function (x) { return str(x).toUpperCase(); });
+    var NAMES = { desc: 'DESC', frac: 'FRAC', pola1: 'POLA1', pola2: 'POLA2', tgt: 'TGT (IN QTY)', po: 'PO (IN QTY)', bpb: 'BPB (IN QTY)', poout: 'PO OUT (IN QTY)' };
+    var idx = {}, miss = [];
+    Object.keys(NAMES).forEach(function (k) { idx[k] = head.indexOf(NAMES[k]); if (idx[k] < 0) miss.push(NAMES[k]); });
+    if (miss.length) throw new Error('Kolom tidak ditemukan di sheet BASIC: ' + miss.join(', '));
+    var map = new Map();
+    for (i = h + 1; i < rows.length; i++) {
+      var r = rows[i]; if (!r) continue;
+      var k = key(r[0]); if (!k || !/^\d+$/.test(k) || map.has(k)) continue;
+      map.set(k, { desc: str(r[idx.desc]), frac: n0(r[idx.frac]), pola1: str(r[idx.pola1]).toUpperCase(), pola2: str(r[idx.pola2]), tgt: n0(r[idx.tgt]), po: n0(r[idx.po]), bpb: n0(r[idx.bpb]), poout: n0(r[idx.poout]) });
+    }
+    if (!map.size) throw new Error('Tidak ada baris produk di sheet BASIC.');
+    return { map: map, count: map.size };
+  }
+
   /* ---------- hitung ---------- */
   function dsi(a, L) { return (typeof a === 'number' && typeof L === 'number' && L !== 0) ? a / (L / 30) : ''; }
   function D(ms) { return ms == null ? '' : new Date(ms); }
@@ -207,6 +229,8 @@
     o.target = promo ? (toNum(promo.target) == null ? promo.target : toNum(promo.target)) : '';
     o.jenis = promo ? promo.jenis : '';
     o.ket = m ? (m.protect === 'PROTECT HO' ? 'CMO' : 'Reg') : '';
+    var sea = S.seasonal && S.seasonal.map ? S.seasonal.map.get(k) : null;
+    o.basic = (sea && sea.pola1 === 'BASIC') ? sea : null;
 
     var std = 0;
     if (opts.dsiStd) { var sv = (opts.std || DEFAULT_STD)[Number(o.fk)]; std = sv == null ? 0 : sv; }
@@ -214,6 +238,7 @@
     else if (typeof o.poout === 'number' && typeof o.pkm === 'number' && o.poout < o.pkm) o.kes = 'PO Out Aktif kecil/ under PKM';
     else if (S.stockOut.map.get(k) === 1) o.kes = 'Stock Out';
     else if (typeof o.dsiStk === 'number' && o.dsiStk < std) o.kes = 'DSI under Standart';
+    else if (opts.dsiStd && typeof o.dsiStk === 'number' && o.dsiStk > std) o.kes = 'DSI stock melebihi standart';
     else o.kes = '';
     return o;
   }
@@ -233,18 +258,63 @@
   }
 
   /* ---------- kesimpulan teks ---------- */
-  var KES_ORDER = ['Promosi', 'PO Out Aktif kecil/ under PKM', 'Stock Out', 'DSI under Standart'];
-  function buildSummary(res, withDetail) {
-    var rows = res.rows; if (!rows.length) return '';
-    function has(v) { return rows.some(function (r) { return r.kes === v; }); }
-    var reasons = [];
-    if (has('Promosi')) reasons.push('Promosi');
-    if (has('Stock Out')) reasons.push('Item Stock Out');
-    if (has('PO Out Aktif kecil/ under PKM')) reasons.push('PO Out Aktif kecil/ under PKM');
-    if (has('DSI under Standart')) reasons.push('DSI under Standart');
+  var KES_ORDER = ['Promosi', 'Stock Out', 'PO Out Aktif kecil/ under PKM', 'DSI under Standart', 'DSI stock melebihi standart'];
 
-    var out = 'Izin revisi Pak @IDM Pak Rian PR' + (reasons.length ? ', kondisi: ' + reasons.join(', ') : '');
+  function nfID(v, dec) {
+    var r = Math.round(v * Math.pow(10, dec)) / Math.pow(10, dec), neg = r < 0;
+    var p = Math.abs(r).toFixed(dec).split('.');
+    var out = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (p[1] && Number(p[1]) ? ',' + p[1].replace(/0+$/, '') : '');
+    return (neg ? '-' : '') + out;
+  }
+  function pct(a, b) { return b > 0 ? nfID(a / b * 100, 1) + '%' : '-'; }
+  function fmtTglID(d) {
+    if (!(d instanceof Date) || isNaN(d)) return '...';
+    return String(d.getDate()).padStart(2, '0') + ' ' + BLN_ID[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2);
+  }
+
+  function buildBasic(items) {
+    var T = '\t';
+    var out = 'Selamat pagi pak @Jonathan C\n\nHari ini di DC BGR1 ada kedatangan item basic:\n';
+    items.forEach(function (r) {
+      var b = r.basic, f = b.frac || (typeof r.frac === 'number' ? r.frac : 0) || 1;
+      function ctn(q) { return q / f; }
+      var qtyPo = ctn(r.qty), tgt = ctn(b.tgt), bpb = ctn(b.bpb), pout = ctn(b.poout);
+      var ttl = qtyPo + bpb + pout, kurang = tgt - ttl;
+      out += '\n' +
+        'Supp' + T + ': ' + (r.supco + (r.snama ? ' - ' + r.snama : '')) + '\n' +
+        'No po' + T + ': ' + r.po + '\n' +
+        'Ket' + T + ': PO EXP TGL ' + fmtTglID(r.tgl) + '\n\n' +
+        'Plu' + T + ': ' + r.prd + '\n' +
+        'Desc' + T + ': ' + (r.desc || b.desc) + '\n\n' +
+        'Qty PO datang (exp) in ctn' + T + ': ' + nfID(qtyPo, 2) + '\n' +
+        'Target in ctn' + T + ': ' + nfID(tgt, 2) + '\n' +
+        'BPB in ctn' + T + ': ' + nfID(bpb, 2) + '\n' +
+        'PO Out in ctn' + T + ': ' + nfID(pout, 2) + '\n' +
+        'BPB vs Target' + T + ': ' + pct(b.bpb, b.tgt) + '\n' +
+        'PO + BPB vs Target' + T + ': ' + pct(b.bpb + b.poout, b.tgt) + '\n' +
+        'Ttl PO Exp + BPB + PO Out' + T + ': ' + nfID(ttl, 2) + '\n\n' +
+        'jika diterima,\n' +
+        'Kekurang In ctn' + T + ': ' + (kurang > 0 ? nfID(kurang, 2) : '0 (melebihi target ' + nfID(-kurang, 2) + ')') + '\n' +
+        'BPB vs Target' + T + ': ' + pct(b.bpb + r.qty, b.tgt) + '\n';
+    });
+    return out + '\nMohon arahannya apakah bisa diterima atau ditolak?';
+  }
+
+  function buildStd(rows) {
+    function has(v) { return rows.some(function (r) { return r.kes === v; }); }
+    var reasons = KES_ORDER.filter(has);
+    var out = (has('DSI stock melebihi standart') ? 'Izin ditolak' : 'Izin diterima') + ' Pak @IDM Pak Rian PR,';
+    if (reasons.length) out += ' Item ' + reasons.join(', ');
     return out;
+  }
+
+  function buildSummary(res) {
+    var rows = res.rows; if (!rows.length) return '';
+    var basics = rows.filter(function (r) { return r.basic; }), others = rows.filter(function (r) { return !r.basic; });
+    var parts = [];
+    if (basics.length) parts.push(buildBasic(basics));
+    if (others.length) parts.push(buildStd(others));
+    return parts.join('\n\n');
   }
 
   /* ---------- kolom & format tampilan (meniru sheet CHECK C:AD + AF) ---------- */
@@ -307,7 +377,7 @@
 
   var api = {
     key: key, toNum: toNum, parseDate: parseDate, parseCSV: parseCSV, detectDelim: detectDelim,
-    parsePOM: parsePOM, parseMaster: parseMaster, parseStockOut: parseStockOut, parsePromo: parsePromo,
+    parsePOM: parsePOM, parseMaster: parseMaster, parseStockOut: parseStockOut, parsePromo: parsePromo, parseSeasonal: parseSeasonal,
     compute: compute, buildSummary: buildSummary, COLS: COLS, fmtCell: fmtCell, fmtDate: fmtDate, fmtTodayID: fmtTodayID,
     DEFAULT_STD: DEFAULT_STD
   };

@@ -33,13 +33,13 @@ main{max-width:1280px;margin:0 auto;padding:6px 16px 48px}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .btn:focus-visible,textarea:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #7FA9DE;outline-offset:2px}
 
-.bahan{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:0;border:1px solid var(--line);border-radius:8px;background:var(--surface);overflow:hidden}
-.bh{padding:12px 14px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);margin:0 -1px -1px 0;display:flex;flex-direction:column;gap:3px;min-height:92px}
-.bh b{font-size:14.5px}
-.bh .file{font-size:12.5px;color:var(--muted)}
-.bh .st{font-size:13px;margin-top:auto;padding-top:6px;display:flex;align-items:flex-start;gap:8px}
-.bh .st .msg{flex:1;min-width:0;overflow-wrap:anywhere}
-.bh .st .dot{width:9px;height:9px;border-radius:50%;background:#B8C2CE;flex:none;margin-top:5px}
+.bahan{display:grid;grid-template-columns:minmax(0,1fr);gap:0;border:1px solid var(--line);border-radius:8px;background:var(--surface);overflow:hidden}
+.bh{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;flex-direction:row;align-items:center;gap:12px}
+.bh:last-child{border-bottom:0}
+.bh b{font-size:14.5px;flex:none;width:92px}
+.bh .st{font-size:13px;display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.bh .st .msg{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bh .st .dot{width:9px;height:9px;border-radius:50%;background:#B8C2CE;flex:none}
 .bh.ok .dot{background:var(--ok)} .bh.err .dot{background:var(--err)} .bh.busy .dot{background:#E0A100}
 .bh.err .msg{color:var(--err)}
 .bh button{flex:none;font:inherit;font-size:13px;font-weight:600;color:var(--blue);background:none;border:0;padding:2px 0;cursor:pointer;text-decoration:underline;margin-left:auto}
@@ -48,7 +48,7 @@ main{max-width:1280px;margin:0 auto;padding:6px 16px 48px}
 
 .inputrow{display:flex;gap:12px;align-items:stretch}
 textarea{width:100%;font:15px/1.4 var(--ui);border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface);color:var(--ink);resize:vertical}
-#poInput{font-family:Consolas,"SFMono-Regular",Menlo,monospace;font-size:14.5px;text-transform:uppercase}
+#poInput{min-height:0;font-family:Consolas,"SFMono-Regular",Menlo,monospace;font-size:14.5px;text-transform:uppercase}
 #poInput::placeholder{text-transform:none;font-family:var(--ui)}
 .inputactions{display:flex;flex-direction:column;gap:8px;min-width:116px}
 .opts{margin-top:12px;font-size:14px}

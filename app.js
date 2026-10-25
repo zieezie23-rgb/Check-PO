@@ -8,9 +8,10 @@
     { id: 'master', label: 'Master Stock', hint: 'Master Stock*.xlsb', accept: '.xlsb,.xlsx,.xls', test: /master/i },
     { id: 'pom', label: 'POMGG', hint: 'POMGG.csv', accept: '.csv,.txt', test: /pom/i },
     { id: 'stockOut', label: 'Stock Out', hint: 'Stock Out.xlsx', accept: '.xlsx,.xlsb,.xls', test: /stock\s*[-_]?\s*out|stockout/i },
-    { id: 'promo', label: 'Promo', hint: 'Promo.xlsx', accept: '.xlsx,.xlsb,.xls', test: /promo/i }
+    { id: 'promo', label: 'Promo', hint: 'Promo.xlsx', accept: '.xlsx,.xlsb,.xls', test: /promo/i },
+    { id: 'seasonal', label: 'Seasonal', hint: 'Laporan Harian Seasonal*.xlsx (sheet BASIC)', accept: '.xlsx,.xlsb,.xls', test: /seasonal/i }
   ];
-  var S = { master: null, pom: null, stockOut: null, promo: null };
+  var S = { master: null, pom: null, stockOut: null, promo: null, seasonal: null };
   var META = {};
   var lastRes = null;
 
@@ -63,7 +64,19 @@
     stockOut: function (rows) { for (var i = 0; i < Math.min(rows.length, 15); i++) { var u = (rows[i] || []).map(function (x) { return String(x == null ? '' : x).trim().toUpperCase(); }); if (u.indexOf('PRDCD') >= 0 && u.indexOf('KL') >= 0) return true; } return false; },
     promo: function (rows) { for (var i = 0; i < Math.min(rows.length, 15); i++) if (rows[i] && String(rows[i][0] == null ? '' : rows[i][0]).trim().toUpperCase() === 'PLU') return true; return false; }
   };
-  var PARSERS = { master: C.parseMaster, stockOut: C.parseStockOut, promo: C.parsePromo };
+  var PARSERS = { master: C.parseMaster, stockOut: C.parseStockOut, promo: C.parsePromo, seasonal: C.parseSeasonal };
+
+  /* file Seasonal besar (banyak sheet, sheet BASIC sangat lebar): baca hanya sheet BASIC dan batasi kolom */
+  function readSeasonalRows(X, buf) {
+    var names = X.read(buf, { type: 'array', bookSheets: true }).SheetNames;
+    var nm = names.filter(function (n) { return /^basic$/i.test(String(n).trim()); })[0];
+    if (!nm) throw new Error('Sheet "BASIC" tidak ditemukan di file Seasonal.');
+    var wb = X.read(buf, { type: 'array', dense: true, sheets: nm, cellFormula: false, cellStyles: false, cellHTML: false, cellNF: false });
+    var ws = wb.Sheets[nm];
+    var rg = X.utils.decode_range(ws['!ref']); if (rg.e.c > 45) rg.e.c = 45;
+    ws['!ref'] = X.utils.encode_range(rg);
+    return X.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+  }
 
   function readWorkbookRows(X, buf, kind) {
     var wb = X.read(buf, { type: 'array', dense: true, cellFormula: false, cellStyles: false, cellHTML: false, cellNF: false });
@@ -78,8 +91,8 @@
   function buildCards() {
     var box = $('bahan'); box.innerHTML = '';
     KINDS.forEach(function (k) {
-      var d = document.createElement('div'); d.className = 'bh'; d.id = 'bh-' + k.id;
-      d.innerHTML = '<b>' + k.label + '</b><span class="file">' + k.hint + '</span>' +
+      var d = document.createElement('div'); d.className = 'bh'; d.id = 'bh-' + k.id; d.title = k.hint;
+      d.innerHTML = '<b>' + k.label + '</b>' +
         '<div class="st"><span class="dot"></span><span class="msg">Belum ada file</span><button type="button">Pilih file</button></div>' +
         '<input type="file" hidden accept="' + k.accept + '">';
       var inp = d.querySelector('input');
@@ -98,10 +111,12 @@
   function refreshReady() {
     var ok = !!(S.master && S.pom);
     $('btnRun').disabled = !ok;
-    var miss = [];
-    if (!S.stockOut) miss.push('Stock Out'); if (!S.promo) miss.push('Promo');
+    var miss = [], note = [];
+    if (!S.stockOut) { miss.push('Stock Out'); note.push('penilaian Stock Out tidak aktif'); }
+    if (!S.promo) { miss.push('Promo'); note.push('kolom promo kosong'); }
+    if (!S.seasonal) { miss.push('Seasonal'); note.push('teks khusus item Basic tidak aktif'); }
     var w = $('warn');
-    if (ok && miss.length) { w.hidden = false; w.textContent = 'Bahan ' + miss.join(' dan ') + ' belum dimuat — hasil tetap bisa dihitung, tetapi ' + (miss.length === 2 ? 'penilaian Stock Out dan kolom promo kosong.' : (miss[0] === 'Promo' ? 'kolom promo kosong.' : 'penilaian Stock Out tidak aktif.')); }
+    if (ok && miss.length) { w.hidden = false; w.textContent = 'Bahan ' + miss.join(', ') + ' belum dimuat — hasil tetap bisa dihitung, tetapi ' + note.join(', ') + '.'; }
     else if (!ok) { w.hidden = false; w.textContent = 'Muat Master Stock dan POMGG dulu supaya No PO bisa dicek.'; }
     else w.hidden = true;
   }
@@ -118,7 +133,7 @@
         var X = await ensureXLSX();
         var buf = await file.arrayBuffer();
         await tick();
-        data = PARSERS[kind](readWorkbookRows(X, buf, kind));
+        data = PARSERS[kind](kind === 'seasonal' ? readSeasonalRows(X, buf) : readWorkbookRows(X, buf, kind));
       }
       S[kind] = data;
       META[kind] = { name: file.name, at: Date.now(), count: kind === 'master' || kind === 'pom' ? data.count : data.count };
@@ -169,7 +184,7 @@
   function run() {
     var inputs = $('poInput').value.split(/[\s,;]+/).filter(Boolean);
     if (!inputs.length) { toast('Isi No PO dulu'); return; }
-    var SS = { master: S.master, pom: S.pom, stockOut: S.stockOut || { map: new Map() }, promo: S.promo || { map: new Map() } };
+    var SS = { master: S.master, pom: S.pom, stockOut: S.stockOut || { map: new Map() }, promo: S.promo || { map: new Map() }, seasonal: S.seasonal || { map: new Map() } };
     var o = readOpts(); saveOpts();
     lastRes = C.compute(inputs, SS, o);
     renderResult();
@@ -178,7 +193,7 @@
   function renderSummary() {
     if (!lastRes) return;
     var ta = $('kesimpulan'); ta.value = C.buildSummary(lastRes);
-    ta.style.height = 'auto'; ta.style.height = Math.min(Math.max(ta.scrollHeight + 4, 60), 380) + 'px';
+    ta.style.height = 'auto'; ta.style.height = Math.min(Math.max(ta.scrollHeight + 4, 60), 2400) + 'px';
   }
 
   function renderResult() {
@@ -256,9 +271,10 @@
     }
     cols.forEach(function (c, i) {
       if (c.spacer) return;
-      cell(xs[i], yh, c.px, headH, '#C5D9F1');
+      var isP = c.g === 'promo', hy = isP ? yh : y0, hh = isP ? headH : grpH + headH;
+      cell(xs[i], hy, c.px, hh, '#C5D9F1');
       ctx.fillStyle = '#000'; ctx.font = 'bold 14px ' + FONT; ctx.textAlign = 'center';
-      var ls = wrapLines(ctx, c.h, c.px - 8), lh = 16, ty = yh + headH / 2 - (ls.length - 1) * lh / 2;
+      var ls = wrapLines(ctx, c.h, c.px - 8), lh = 16, ty = hy + hh / 2 - (ls.length - 1) * lh / 2;
       ls.forEach(function (l, n) { ctx.fillText(l, xs[i] + c.px / 2, ty + n * lh); });
     });
     // isi
