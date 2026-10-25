@@ -69,8 +69,7 @@ textarea{width:100%;font:15px/1.4 var(--ui);border:1px solid var(--line);border-
 table.sheet{border-collapse:collapse;font:14.5px/1.25 var(--cell);table-layout:fixed;color:#000}
 .sheet th,.sheet td{border:1px solid #000;padding:3px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:28px}
 .sheet thead th{background:var(--sheet);font-weight:700;text-align:center;white-space:normal;line-height:1.15;position:sticky;top:0;z-index:2}
-.sheet thead tr.r2 th{top:28px}
-.sheet thead th.grp{height:24px}
+.sheet thead th.grp{height:auto}
 .sheet th.sp,.sheet td.sp{border:0;background:#fff;padding:0}
 .sheet thead th.sp{background:#fff}
 .sheet td.c{text-align:center}.sheet td.r{text-align:right}.sheet td.l{text-align:left}

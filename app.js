@@ -226,6 +226,8 @@
     }).join('');
     var wdt = cols.reduce(function (a, c) { return a + c.px; }, 0);
     $('tableWrap').innerHTML = '<table class="sheet" style="width:' + wdt + 'px">' + colg + '<thead><tr>' + h1 + '</tr><tr class="r2">' + h2 + '</tr></thead><tbody>' + body + '</tbody></table>';
+    var tr0 = document.querySelector('#tableWrap thead tr'), hh = tr0 ? tr0.getBoundingClientRect().height : 0;
+    document.querySelectorAll('#tableWrap thead tr.r2 th').forEach(function (th) { th.style.top = Math.floor(hh) + 'px'; });
     $('secHasil').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
