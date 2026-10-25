@@ -272,8 +272,13 @@
     return String(d.getDate()).padStart(2, '0') + ' ' + BLN_ID[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2);
   }
 
+  function aligned(pairs) {
+    var w = 0;
+    pairs.forEach(function (p) { if (p[0].length > w) w = p[0].length; });
+    return pairs.map(function (p) { return p[0] + new Array(w - p[0].length + 1).join(' ') + ' : ' + p[1]; }).join('\n');
+  }
+
   function buildBasic(items) {
-    var T = '\t';
     var out = 'Selamat pagi pak @Jonathan C\n\nHari ini di DC BGR1 ada kedatangan item basic:\n';
     items.forEach(function (r) {
       var b = r.basic, f = b.frac || (typeof r.frac === 'number' ? r.frac : 0) || 1;
@@ -281,21 +286,29 @@
       var qtyPo = ctn(r.qty), tgt = ctn(b.tgt), bpb = ctn(b.bpb), pout = ctn(b.poout);
       var ttl = qtyPo + bpb + pout, kurang = tgt - ttl;
       out += '\n' +
-        'Supp' + T + ': ' + (r.supco + (r.snama ? ' - ' + r.snama : '')) + '\n' +
-        'No po' + T + ': ' + r.po + '\n' +
-        'Ket' + T + ': PO EXP TGL ' + fmtTglID(r.tgl) + '\n\n' +
-        'Plu' + T + ': ' + r.prd + '\n' +
-        'Desc' + T + ': ' + (r.desc || b.desc) + '\n\n' +
-        'Qty PO datang (exp) in ctn' + T + ': ' + nfID(qtyPo, 2) + '\n' +
-        'Target in ctn' + T + ': ' + nfID(tgt, 2) + '\n' +
-        'BPB in ctn' + T + ': ' + nfID(bpb, 2) + '\n' +
-        'PO Out in ctn' + T + ': ' + nfID(pout, 2) + '\n' +
-        'BPB vs Target' + T + ': ' + pct(b.bpb, b.tgt) + '\n' +
-        'PO + BPB vs Target' + T + ': ' + pct(b.bpb + b.poout, b.tgt) + '\n' +
-        'Ttl PO Exp + BPB + PO Out' + T + ': ' + nfID(ttl, 2) + '\n\n' +
+        aligned([
+          ['Supp', r.supco + (r.snama ? ' - ' + r.snama : '')],
+          ['No po', r.po],
+          ['Ket', 'PO EXP TGL ' + fmtTglID(r.tgl)]
+        ]) + '\n\n' +
+        aligned([
+          ['Plu', r.prd],
+          ['Desc', r.desc || b.desc]
+        ]) + '\n\n' +
+        aligned([
+          ['Qty PO datang (exp) in ctn', nfID(qtyPo, 2)],
+          ['Target in ctn', nfID(tgt, 2)],
+          ['BPB in ctn', nfID(bpb, 2)],
+          ['PO Out in ctn', nfID(pout, 2)],
+          ['BPB vs Target', pct(b.bpb, b.tgt)],
+          ['PO + BPB vs Target', pct(b.bpb + b.poout, b.tgt)],
+          ['Ttl PO Exp + BPB + PO Out', nfID(ttl, 2)]
+        ]) + '\n\n' +
         'jika diterima,\n' +
-        'Kekurang In ctn' + T + ': ' + (kurang > 0 ? nfID(kurang, 2) : '0 (melebihi target ' + nfID(-kurang, 2) + ')') + '\n' +
-        'BPB vs Target' + T + ': ' + pct(b.bpb + r.qty, b.tgt) + '\n';
+        aligned([
+          ['Kekurang In ctn', kurang > 0 ? nfID(kurang, 2) : '0 (melebihi target ' + nfID(-kurang, 2) + ')'],
+          ['BPB vs Target', pct(b.bpb + r.qty, b.tgt)]
+        ]) + '\n';
     });
     return out + '\nMohon arahannya apakah bisa diterima atau ditolak?';
   }

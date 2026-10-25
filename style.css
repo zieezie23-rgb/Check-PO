@@ -61,7 +61,7 @@ textarea{width:100%;font:15px/1.4 var(--ui);border:1px solid var(--line);border-
 .warn{margin:12px 0 0;padding:10px 12px;border-left:4px solid #E0A100;background:#FFF6DC;border-radius:4px;font-size:13.5px}
 
 .concl{background:var(--flag-bg);border:1px solid var(--flag);border-left:6px solid var(--red);border-radius:8px;padding:12px}
-.concl textarea{background:#fff;border-color:var(--flag);color:var(--flag-ink);font-size:15px;min-height:64px}
+.concl textarea{font-family:Consolas,"SFMono-Regular",Menlo,monospace;font-size:14px;background:#fff;border-color:var(--flag);color:var(--flag-ink);font-size:15px;min-height:64px}
 .conclbar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:10px}
 .conclbar .chk{margin:0}
 
