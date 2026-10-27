@@ -27,15 +27,17 @@
     var d = new Date(Math.round((n - 25569) * 86400000));
     return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
   }
-  function parseDate(v) {
+  function parseDate(v, mdy) {
     if (v == null || v === '') return null;
     if (v instanceof Date) return isNaN(v) ? null : new Date(v.getFullYear(), v.getMonth(), v.getDate());
     if (typeof v === 'number') return (v > 20000 && v < 100000) ? serialToDate(v) : null;
     var s = String(v).trim(), m;
     if ((m = /^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/.exec(s))) return new Date(+m[1], +m[2] - 1, +m[3]);
     if ((m = /^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/.exec(s))) {
-      var y = +m[3]; if (y < 100) y += 2000;
-      return new Date(y, +m[2] - 1, +m[1]);
+      var y = +m[3], a = +m[1], b = +m[2]; if (y < 100) y += 2000;
+      /* mdy: format Amerika (bulan/tanggal/tahun) — dipakai kecuali angka pertama jelas bukan bulan (>12) */
+      if (mdy && a <= 12) return new Date(y, a - 1, b);
+      return new Date(y, b - 1, a);
     }
     if (/^\d{5}(\.\d+)?$/.test(s)) return serialToDate(Number(s));
     var t = Date.parse(s);
@@ -92,18 +94,20 @@
     parseCSV(text, delim, function (rec) {
       if (!head) {
         head = rec.map(function (s) { return s.trim().toUpperCase(); });
-        idx = { doc: head.indexOf('DOCNO'), supco: head.indexOf('SUPCO'), prd: head.indexOf('PRDCD'), qty: head.indexOf('QTY'), date: head.indexOf('PO_DATE'), umur: head.indexOf('UMUR_PO') };
+        idx = { doc: head.indexOf('DOCNO'), supco: head.indexOf('SUPCO'), prd: head.indexOf('PRDCD'), qty: head.indexOf('QTY'), date: head.indexOf('PO_DATE'), umur: [] };
+        head.forEach(function (h, j) { if (/^UMUR/.test(h)) { if (h === 'UMUR_PO') idx.umur.unshift(j); else idx.umur.push(j); } });
         var miss = [];
         if (idx.doc < 0) miss.push('DOCNO'); if (idx.supco < 0) miss.push('SUPCO'); if (idx.prd < 0) miss.push('PRDCD');
-        if (idx.qty < 0) miss.push('QTY'); if (idx.date < 0) miss.push('PO_DATE'); if (idx.umur < 0) miss.push('UMUR_PO');
+        if (idx.qty < 0) miss.push('QTY'); if (idx.date < 0) miss.push('PO_DATE'); if (!idx.umur.length) miss.push('UMUR_PO');
         if (miss.length) throw new Error('Kolom tidak ditemukan di POMGG.csv: ' + miss.join(', '));
         return;
       }
       var doc = str(rec[idx.doc]); if (!doc) return;
       var prd = str(rec[idx.prd]);
-      var dt = parseDate(rec[idx.date]);
+      var dt = parseDate(rec[idx.date], true);
       var ms = dt ? dt.getTime() : null;
-      var umur = n0(rec[idx.umur]);
+      var umur = 0;   /* ada beberapa kolom UMUR*: pakai yang pertama berisi (UMUR_PO diutamakan) */
+      for (var u = 0; u < idx.umur.length; u++) { var uv = rec[idx.umur[u]]; if (uv != null && String(uv).trim() !== '') { umur = n0(uv); break; } }
       var exp = null;
       if (dt) { var de = new Date(dt.getTime()); de.setDate(de.getDate() + (umur || 0)); exp = de.getTime(); }
       rows.push({ doc: doc, docU: doc.toUpperCase(), supco: str(rec[idx.supco]), prd: prd, qty: n0(rec[idx.qty]), date: exp });

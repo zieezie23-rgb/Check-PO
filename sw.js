@@ -1,4 +1,4 @@
-const VER = 'po-expired-v9';
+const VER = 'po-expired-v10';
 const SHELL = ['./', 'index.html', 'style.css', 'core.js', 'app.js', 'manifest.json', 'assets/icon.png'];
 const CDN = ['https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'];
 
