@@ -89,6 +89,7 @@
 
   /* ---------- kartu bahan ---------- */
   function buildCards() {
+    $('btnFold').onclick = function () { $('secBahan').classList.toggle('folded'); updateBahanFold(); };
     var box = $('bahan'); box.innerHTML = '';
     KINDS.forEach(function (k) {
       var d = document.createElement('div'); d.className = 'bh'; d.id = 'bh-' + k.id; d.title = k.hint;
@@ -108,7 +109,19 @@
     var m = META[kind]; if (!m) return;
     setCard(kind, 'ok', m.name + ' · ' + nf(m.count) + ' baris · ' + hhmm(m.at));
   }
+  var allWas = false;
+  function updateBahanFold() {
+    var all = KINDS.every(function (k) { return !!S[k.id]; });
+    var sec = $('secBahan');
+    if (all && !allWas) sec.classList.add('folded');   /* lipat otomatis saat semua bahan baru lengkap */
+    if (!all) sec.classList.remove('folded');
+    allWas = all;
+    $('bahanSum').textContent = all ? 'Semua ' + KINDS.length + ' bahan sudah dimuat' : '';
+    $('btnFold').hidden = !all;
+    $('btnFold').textContent = sec.classList.contains('folded') ? 'Tampilkan' : 'Sembunyikan';
+  }
   function refreshReady() {
+    updateBahanFold();
     var ok = !!(S.master && S.pom);
     $('btnRun').disabled = !ok;
     var miss = [], note = [];
@@ -207,7 +220,7 @@
     $('btnCopy').disabled = !r.rows.length;
     if (!r.rows.length) { $('tableWrap').innerHTML = '<div class="empty">Tidak ada item untuk No PO tersebut.</div>'; return; }
 
-    var cols = C.COLS, h1 = '', h2 = '', i, c;
+    var cols = visCols(r.rows), h1 = '', h2 = '', i, c;
     var colg = '<colgroup>' + cols.map(function (c) { return '<col style="width:' + c.px + 'px">'; }).join('') + '</colgroup>';
     for (i = 0; i < cols.length; i++) {
       c = cols[i];
@@ -231,6 +244,12 @@
     $('secHasil').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  /* kolom Kesimpulan disembunyikan jika ada item basic (basic saja / campur) */
+  function visCols(rows) {
+    var hasBasic = rows.some(function (x) { return x.basic; });
+    return hasBasic ? C.COLS.filter(function (c) { return !c.spacer && c.k !== 'kes'; }) : C.COLS;
+  }
+
   /* ---------- salin ---------- */
   function copyText() {
     var ta = $('kesimpulan'), txt = ta.value;
@@ -246,7 +265,7 @@
   }
   function exportJPEG() {
     if (!lastRes || !lastRes.rows.length) return;
-    var cols = C.COLS, rows = lastRes.rows;
+    var rows = lastRes.rows, cols = visCols(rows);
     var rowH = 26, headH = 52, grpH = 24, titleH = 32, dateH = 24, pad = 14, FONT = 'Calibri, Carlito, "Segoe UI", Arial, sans-serif';
     var W = cols.reduce(function (a, c) { return a + c.px; }, 0) + pad * 2;
     var H = pad + titleH + dateH + grpH + headH + rows.length * rowH + pad;

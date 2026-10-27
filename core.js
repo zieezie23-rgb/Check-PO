@@ -92,10 +92,10 @@
     parseCSV(text, delim, function (rec) {
       if (!head) {
         head = rec.map(function (s) { return s.trim().toUpperCase(); });
-        idx = { doc: head.indexOf('DOCNO'), supco: head.indexOf('SUPCO'), prd: head.indexOf('PRDCD'), qty: head.indexOf('QTY'), date: head.indexOf('PO_DATE') };
+        idx = { doc: head.indexOf('DOCNO'), supco: head.indexOf('SUPCO'), prd: head.indexOf('PRDCD'), qty: head.indexOf('QTY'), date: head.indexOf('PO_DATE'), umur: head.indexOf('UMUR_PO') };
         var miss = [];
         if (idx.doc < 0) miss.push('DOCNO'); if (idx.supco < 0) miss.push('SUPCO'); if (idx.prd < 0) miss.push('PRDCD');
-        if (idx.qty < 0) miss.push('QTY'); if (idx.date < 0) miss.push('PO_DATE');
+        if (idx.qty < 0) miss.push('QTY'); if (idx.date < 0) miss.push('PO_DATE'); if (idx.umur < 0) miss.push('UMUR_PO');
         if (miss.length) throw new Error('Kolom tidak ditemukan di POMGG.csv: ' + miss.join(', '));
         return;
       }
@@ -103,7 +103,10 @@
       var prd = str(rec[idx.prd]);
       var dt = parseDate(rec[idx.date]);
       var ms = dt ? dt.getTime() : null;
-      rows.push({ doc: doc, docU: doc.toUpperCase(), supco: str(rec[idx.supco]), prd: prd, qty: n0(rec[idx.qty]), date: ms });
+      var umur = n0(rec[idx.umur]);
+      var exp = null;
+      if (dt) { var de = new Date(dt.getTime()); de.setDate(de.getDate() + (umur || 0)); exp = de.getTime(); }
+      rows.push({ doc: doc, docU: doc.toUpperCase(), supco: str(rec[idx.supco]), prd: prd, qty: n0(rec[idx.qty]), date: exp });
       if (ms != null) { var k = key(prd); var o = maxDate.get(k); if (o == null || ms > o) maxDate.set(k, ms); }
     });
     if (!head) throw new Error('POMGG.csv kosong.');
