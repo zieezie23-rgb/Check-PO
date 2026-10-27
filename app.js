@@ -14,6 +14,7 @@
   var S = { master: null, pom: null, stockOut: null, promo: null, seasonal: null };
   var META = {};
   var lastRes = null;
+  var PARSE_VER = 3;
 
   /* ---------- util UI ---------- */
   var toastTimer;
@@ -152,7 +153,7 @@
       META[kind] = { name: file.name, at: Date.now(), count: kind === 'master' || kind === 'pom' ? data.count : data.count };
       cardOk(kind);
       if (data.warn && data.warn.length) toast('Master: kolom ' + data.warn.join(', ') + ' tidak ditemukan di header');
-      idbSet(kind, { meta: META[kind], data: data }).catch(function () { });
+      idbSet(kind, { meta: META[kind], data: data, pv: PARSE_VER }).catch(function () { });
     } catch (e) {
       console.error(e);
       setCard(kind, 'err', e.message || String(e));
@@ -329,7 +330,8 @@
     for (var i = 0; i < KINDS.length; i++) {
       try {
         var rec = await idbGet(KINDS[i].id);
-        if (rec && rec.data) { S[KINDS[i].id] = rec.data; META[KINDS[i].id] = rec.meta; cardOk(KINDS[i].id); }
+        /* data hasil baca versi parser lama (mis. tanggal salah) dibuang — file harus diunggah ulang */
+        if (rec && rec.data && rec.pv === PARSE_VER) { S[KINDS[i].id] = rec.data; META[KINDS[i].id] = rec.meta; cardOk(KINDS[i].id); }
       } catch (e) { }
     }
     refreshReady();
